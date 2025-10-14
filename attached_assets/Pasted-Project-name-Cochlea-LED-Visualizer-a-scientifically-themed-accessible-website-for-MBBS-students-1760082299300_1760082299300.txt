@@ -1,0 +1,158 @@
+Project name: Cochlea LED Visualizer — a scientifically-themed, accessible website for MBBS students, professors & clinicians to visualize Place, Frequency (Temporal) and Volley theories using a 3D printed cochlea with programmable LEDs.
+
+Goal:
+Build a responsive single-page web app (SPA) that:
+  1. Shows a 3D cochlea model with an LED overlay that lights the LED(s) corresponding to incoming frequency data.
+  2. Receives live frequency (and optional amplitude/waveform) input from external hardware (microcontroller) and displays the received frequency in real time.
+  3. Presents interactive, publication-quality graphs (waveform, FFT spectrum, spectrogram, RMS/energy, frequency vs time, spike/volley demo) with clear axes, units and short explanations aimed at MBBS students and faculty.
+  4. Contains an educational section that concisely explains Frequency (Temporal) Theory, Place Theory and Volley Theory with illustrative diagrams and a recommended YouTube animation embedded.
+  5. Provides settings and calibration options (number of LEDs, cochlea length, Greenwood constants, color map, frequency range) and options to export CSV/PNG.
+
+Target users & priorities:
+  - MBBS students and medical faculty. Prioritize clarity, medically-accurate vocabulary, readable typography, and scientific styling (clean, muted palette; high contrast; legible font sizes).
+  - Usability for professors: quick toggles to demonstrate theories, pause/replay streams, and export data.
+
+Tech stack (preferred):
+  - Frontend: React + TypeScript + Vite (or Next.js if server-side required).
+  - 3D model: three.js or <model-viewer> (support glTF/GLB). LEDs are overlaid on the 3D model.
+  - Charts: D3.js or Chart.js for interactive graphs; use WebGL or canvas for spectrogram.
+  - Audio / Signal helper: Web Audio API + optional Tone.js for local demo generation.
+  - Backend (light): Node/Express or Fastify inside Replit to accept HTTP POST and WebSocket streams (if needed).
+  - Styling: Tailwind CSS with a scientific layout (Inter or Roboto for body).
+  - Accessibility: ARIA labels, keyboard navigation and color contrast checks.
+
+MUST-HAVE features (acceptance criteria)
+  - 3D cochlea view:
+    * Load a provided .glb/.gltf cochlea model.
+    * Place programmable LED markers (configurable count N). Each LED node must be addressable (index).
+    * Animate LED (blink, color, intensity) when a frequency maps to its region.
+    * Show tooltip on hover with: led index, position (mm and %), best-frequency (Hz).
+  - Live input:
+    * Accept incoming data via:
+      - WebSocket channel: `wss://<domain>/ws` with messages like
+        `{"type":"frequency","frequency":200, "amplitude":0.45, "timestamp":"2025-10-10T12:34:56Z"}`
+      - HTTP POST: `POST /api/frequency` JSON body identical to above.
+    * Provide a debug "Simulate input" panel that generates test tones (sine / harmonic / noise) for demo mode.
+  - Mapping frequency → cochlea LED:
+    * Implement Greenwood mapping (formula and inverse) — default constants for humans: A=165.4, a=2.1, k=0.88 (configurable). Use this to compute fractional position x and LED index. (See references.)
+    * LED index calculation:
+      ```
+      posFraction = inverseGreenwood(frequency);
+      ledIndex = clamp(round(posFraction * (numLEDs - 1)), 0, numLEDs-1);
+      ```
+  - Color mapping:
+    * Map frequency to a perceptually uniform colormap (e.g., viridis). Normalize on a **log** frequency axis:
+      ```
+      norm = (log10(f) - log10(fMin)) / (log10(fMax) - log10(fMin));
+      color = colormap.sample(norm);
+      ```
+  - Graphs (interactive with axes, gridlines, tooltips & short explanations):
+    1. **Waveform (time-domain)** — x: time (ms), y: amplitude (±1 or %), window default 200 ms. Explanation box: what amplitude & phase mean.
+    2. **FFT / Spectrum (frequency-domain)** — x: frequency (Hz). Use log scale on x (major ticks at 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000). y: amplitude (dB or linear magnitude). Explanation: how to read peaks (fundamental & harmonics).
+    3. **Spectrogram (time vs frequency)** — x: time (s), y: frequency (Hz, log scale optional), color intensity: magnitude (dB). Include color legend and explanation about time-frequency energy.
+    4. **Frequency vs Time (received frequency stream)** — x: time, y: frequency (Hz). Shows the sequence of frequencies coming from hardware (use step or line).
+    5. **RMS / Energy over time** — x: time, y: RMS amplitude or dB SPL estimate (if amplitude calibration provided).
+    6. **Volley / Temporal demo** — simulated spike raster and histogram: x: time (ms), y: neuron index (1..M). Show phase-locking for low frequencies and loss of phase precision in higher ranges. Explanation: how volley theory supplements temporal coding.
+    * For each graph, produce a small embedded text block labeled **"How to read this"** (1-3 lines) and an axis legend with units.
+  - Educational content:
+    * Short, accurate summaries of Place Theory, Frequency (Temporal) Theory, and Volley Theory with small illustrative diagrams per theory and a side-by-side comparison table explaining frequency ranges where each theory is dominant (low vs mid vs high frequencies).
+    * Embed a recommended YouTube animation that covers these theories and cochlear tonotopy (embed by ID).
+  - Controls & export:
+    * Settings panel: numLEDs, cochleaLengthMM (default 35 mm), Greenwood A/a/k, fMin/fMax, colormap, blink pattern & LED brightness.
+    * Export graph as PNG/SVG and download raw received data as CSV.
+    * Toggle between linear & log frequency scales for the spectrum and spectrogram.
+  - Documentation:
+    * README.md with build/run instructions, how to connect an Arduino/ESP (example curl / WebSocket payloads), and explanation of constants & mapping.
+    * Unit tests for the mapping function (greenwood ↔ frequency) and for API endpoints (mock POST & WebSocket messages).
+
+API / data contract (clear)
+  - POST /api/frequency
+    Content-Type: application/json
+    Body:
+      {
+        "frequency": 200,           // Hz (required)
+        "amplitude": 0.45,          // optional normalized amplitude 0..1
+        "rms": 0.12,                // optional RMS value
+        "timestamp": "2025-10-10T12:34:56.789Z",
+        "source": "arduino-uno"
+      }
+    Response: 200 OK JSON { "status":"ok" }
+  - WebSocket: open `wss://<domain>/ws`. server should accept the same JSON messages realtime.
+  - CORS: allow requests from same origin and optionally from localhost during dev.
+
+Mathematics (must implement as shown; constants editable in Settings)
+  - Greenwood forward function:
+      f(x) = A * (10^(a * x) - k)
+  - Inverse (to compute fractional cochlea position x from frequency f):
+      x = (1 / a) * log10(f / A + k)
+    * Defaults for humans (configurable in settings): A=165.4, a=2.1, k=0.88.
+    * pos_mm = x * cochleaLengthMM (default cochleaLengthMM = 35mm).
+    * LED index = round(x * (numLEDs - 1)) clamped to [0, numLEDs-1].
+  - Use log-scale color normalization for mapping frequency → color.
+
+UI / typography / style (scientific look)
+  - Font: Inter (body) or Roboto — base size 16px, line-height 1.6.
+  - Headings: H1 28–32px, H2 20–22px, H3 16–18px. Keep tight, clinical spacing.
+  - Colors: neutral background (#ffffff), primary text (#0b132b), accent (~#0066CC). Use a distinct accessible color for LEDs (colormap for mapping).
+  - Buttons & controls: minimal, with tooltips and small captions (e.g., “FFT window: 2048 samples”).
+  - Make graphs publication-ready: axis ticks, units, gridlines, export as SVG/PNG.
+
+Graph axis & annotation specifics (copy these exactly)
+  - Waveform:
+    * x-axis: Time (ms). Example ticks: 0, 50, 100, 150, 200 ms.
+    * y-axis: Amplitude (normalized). Explanation: "Amplitude shows air pressure variations; peak-to-peak indicates loudness."
+  - FFT / Spectrum:
+    * x-axis: Frequency (Hz) — log scale recommended. Tick list: [20,50,100,200,500,1k,2k,5k,10k,20k].
+    * y-axis: Magnitude (dBFS or linear). Explanation: "Peaks identify fundamental & harmonic frequencies."
+  - Spectrogram:
+    * x-axis: Time (s) — sliding window.
+    * y-axis: Frequency (Hz) — linear or log (user toggle).
+    * Color range: amplitude in dB with a legend. Explanation: "Time-frequency energy distribution."
+  - Frequency-time trace:
+    * x-axis: Time (s), y-axis: Frequency (Hz).
+    * Annotate received value in big text above the cochlea (e.g., "Received frequency: 200 Hz").
+  - Volley / spike raster:
+    * x-axis: Time (ms), y-axis: Neuron index.
+    * Provide histogram below showing population firing rate.
+
+Dev tasks checklist (deliverables)
+  - [ ] Create project scaffold (React+TS, Tailwind, three.js, Chart library).
+  - [ ] Implement backend endpoints + WebSocket receiver + CORS.
+  - [ ] Implement Greenwood mapping & LED addressing code with settings page.
+  - [ ] Implement 3D cochlea viewer + LED overlay, with LED color & blink animation.
+  - [ ] Implement graphs with correct axis labels, legends and “How to read this” explanations.
+  - [ ] Add simulated demo mode (sine, harmonics, noise) for classroom demo without hardware.
+  - [ ] Add export (CSV / PNG / SVG) and README.
+  - [ ] Add unit tests for mapping and API.
+  - [ ] Provide a short admin panel for calibration and to tweak A, a, k constants.
+
+Example test payloads (for integration tests)
+  - Single-tone:
+    `{"frequency":200, "amplitude":0.5, "timestamp":"2025-10-10T12:00:00Z"}`
+  - Sweep:
+    stream of messages 50Hz → 8000Hz over 10s (simulate to see LED travel along cochlea).
+  - Harmonic complex:
+    `{"frequency":440, "amplitude":0.8, "harmonics":[880,1320]}` (optional: visualize harmonics in spectrum).
+
+Embed recommended YouTube animation to include in the Theory page (use iframe embed):
+  - Use the following video (explainers + animation of place/frequency/volley): `https://www.youtube.com/watch?v=oRL0YXffU2I`
+    * Embed with `<iframe src="https://www.youtube.com/embed/oRL0YXffU2I" ...>`.
+
+Developer notes / security
+  - If hardware devices connect directly, provide token-based simple auth (apiKey in header).
+  - Provide clear error messages if frequency is out of configured range.
+  - Unit/Integration tests must include mapping function tests for edge values (20Hz, 20kHz).
+  - Ensure server handles bursts (debounce UI updates if >100 msgs/s). Allow high-rate reception but throttled UI updates.
+
+Project README (auto-generate)
+  - Quick-start: install, run, demo mode, connect device (example curl and Arduino/ESP snippet).
+  - Explanation of Greenwood function & constants and how to adjust them for different cochlea models.
+  - How to export data & faculty guide for classroom use.
+
+Extra credit (optional, nice-to-have)
+  - Allow uploading a custom cochlea GLB and auto-fit LED nodes along the outer spiral.
+  - Add multi-user “demo mode” shareable link with replay of last N seconds.
+  - Add an offline printable handout summarizing the three theories with the graphs produced from the current demo.
+
+End of prompt. Build iteratively but deliver an end-to-end working SPA (3D cochlea + graphs + live input) and full README.
+
