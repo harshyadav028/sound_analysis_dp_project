@@ -6,9 +6,14 @@ import WaveformChart from "@/components/WaveformChart";
 import SpectrumChart from "@/components/SpectrumChart";
 import FrequencyTimeChart from "@/components/FrequencyTimeChart";
 import RealTimeControls from "@/components/RealTimeControls";
+import FrequencyGenerator from "@/components/FrequencyGenerator";
+import SoundTypeSelector from "@/components/SoundTypeSelector";
 import TheorySection from "@/components/TheorySection";
 import AnimationSection from "@/components/3DAnimationSection";
+import SoundEducationPanel from "@/components/SoundEducationPanel";
+import QuickReferenceCard from "@/components/QuickReferenceCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import BackgroundVideo from "@/components/BackgroundVideo";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -184,15 +189,16 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="min-h-screen bg-background relative">
+      {/* Background Video Component */}
+      <BackgroundVideo />
+
+      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/90 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Activity className="w-8 h-8 text-primary" />
             <div>
-              <h1 className="text-xl font-semibold">
-                Sound Analyser
-              </h1>
+              <h1 className="text-xl font-semibold">Sound Analyser</h1>
               <p className="text-xs text-muted-foreground">
                 Auditory Theory Educational Tool
               </p>
@@ -245,7 +251,13 @@ export default function Home() {
                   onStop={handleRealTimeStop}
                   connectionStatus={connectionStatus}
                 />
+                <QuickReferenceCard />
               </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              <FrequencyGenerator />
+              <SoundTypeSelector />
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -276,8 +288,11 @@ export default function Home() {
             </div>
           </TabsContent>
 
-          <TabsContent value="theory">
+          <TabsContent value="theory" className="space-y-8">
             <TheorySection />
+            <div className="border-t pt-6">
+              <SoundEducationPanel />
+            </div>
           </TabsContent>
 
           <TabsContent value="animation">
@@ -286,7 +301,7 @@ export default function Home() {
         </Tabs>
       </main>
 
-      <footer className="border-t mt-12 py-6">
+      <footer className="border-t mt-12 py-6 bg-card/90 backdrop-blur-sm">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
           <p>
             Cochlea LED Visualizer - Educational tool for MBBS students and
