@@ -10,7 +10,8 @@ import TheorySection from "@/components/TheorySection";
 import AnimationSection from "@/components/3DAnimationSection";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-
+import HearingTheoriesVisualization from "@/components/HearingTheoriesVisualization";
+import { Ear } from "lucide-react";
 export default function Home() {
   const [currentFrequency, setCurrentFrequency] = useState<number | null>(null);
   const [currentAmplitude, setCurrentAmplitude] = useState<number>(0.5);
@@ -115,7 +116,7 @@ export default function Home() {
         // Estimate amplitude using RMS of time-domain waveform
         const rms = Math.sqrt(
           waveform.reduce((sum, p) => sum + p.amplitude * p.amplitude, 0) /
-            waveform.length
+          waveform.length
         );
 
         setCurrentFrequency(Math.round(dominantFreq));
@@ -215,7 +216,7 @@ export default function Home() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="visualizer" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto mb-8">
+          <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto mb-8">
             <TabsTrigger value="visualizer" data-testid="tab-visualizer">
               <Activity className="w-4 h-4 mr-2" />
               Visualizer
@@ -226,7 +227,11 @@ export default function Home() {
             </TabsTrigger>
             <TabsTrigger value="animation" data-testid="tab-animation">
               <Play className="w-4 h-4 mr-2" />
-              3D Animation
+              Resources
+            </TabsTrigger>
+            <TabsTrigger value="theories" data-testid="tab-theories">
+              <Ear className="w-4 h-4 mr-2" />
+              Animations 
             </TabsTrigger>
           </TabsList>
 
@@ -267,10 +272,10 @@ export default function Home() {
                   freqTimeData.length > 0
                     ? freqTimeData
                     : [
-                        { time: 0, frequency: 200 },
-                        { time: 1, frequency: 500 },
-                        { time: 2, frequency: 1000 },
-                      ]
+                      { time: 0, frequency: 200 },
+                      { time: 1, frequency: 500 },
+                      { time: 2, frequency: 1000 },
+                    ]
                 }
               />
             </div>
@@ -282,6 +287,9 @@ export default function Home() {
 
           <TabsContent value="animation">
             <AnimationSection />
+          </TabsContent>
+          <TabsContent value="theories">
+            <HearingTheoriesVisualization />
           </TabsContent>
         </Tabs>
       </main>
